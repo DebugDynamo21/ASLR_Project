@@ -7,7 +7,7 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode, VideoProcessorBase
 import config as C
 from signlib import LandmarkExtractor, Segmenter, Predictor, resize_w, crop_roi
 
-st.set_page_config(page_title="Sign Language Recognition", page_icon="🤟", layout="wide")
+st.set_page_config(page_title="Sign Language Recognition", page_icon="☯︎", layout="wide")
 
 
 @lru_cache(maxsize=1)
@@ -60,7 +60,7 @@ class SignProcessor(VideoProcessorBase):
         return av.VideoFrame.from_ndarray(vis, format="bgr24")
 
 
-st.title("🤟 Real-Time Sign Phrase Recognition")
+st.title("☯︎ Real-Time Sign Phrase Recognition")
 st.caption("Skeletal keyframes (MediaPipe) + RGB keyframes (MobileNetV3) → two-stream BiGRU")
 
 if not os.path.exists(C.MODEL_PATH):
@@ -88,10 +88,20 @@ if mode == "Live webcam":
     c1, c2 = st.columns([3, 2])
     with c1:
         ctx = webrtc_streamer(
-            key="sign", mode=WebRtcMode.SENDRECV, video_processor_factory=SignProcessor,
-            media_stream_constraints={"video": {"width": 640, "height": 480}, "audio": False},
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            async_processing=True)
+            key="sign",
+            mode=WebRtcMode.SENDRECV,
+            video_processor_factory=SignProcessor,
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": ["stun:stun.cloudflare.com:3478"]},
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                ]
+            },
+            media_stream_constraints={
+                "video": True,
+                "audio": False,
+            },
+        )
     with c2:
         status, big, bar, top3, hist = st.empty(), st.empty(), st.empty(), st.empty(), st.empty()
     if ctx.video_processor:
