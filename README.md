@@ -1,4 +1,4 @@
-# Signer-Independent Sign Phrase Recognition (keyframes + skeleton)
+# Signer-Independent Multimodal Sign Phrase Recognition (keyframes + skeleton)
 
 **Pipeline:** video → MediaPipe Holistic (pose + both hands) → trim idle frames → **motion-adaptive keyframes (24)**
 → skeleton features (shoulder-normalised, hand-shape, velocity) + RGB keyframe crops (MobileNetV3 embeddings)
