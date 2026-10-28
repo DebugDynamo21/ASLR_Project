@@ -1,0 +1,29 @@
+cat > .gitignore <<'EOF'
+# Python virtual environments
+.venv/
+venv/
+env/
+.venv-*/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+EOF

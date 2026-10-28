@@ -1,0 +1,10 @@
+streamlit>=1.35
+streamlit-webrtc>=0.47
+av
+mediapipe==0.10.14
+numpy<2
+torch>=2.2
+torchvision
+scikit-learn
+matplotlib
+tqdm
