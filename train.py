@@ -1,4 +1,4 @@
-"""Train with a SIGNER-INDEPENDENT split: validation and test signers never appear in training."""
+"""Train with a signer-independent split, or a per-phrase split for one signer."""
 import argparse, glob, json, os
 import numpy as np, torch, torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -29,14 +29,37 @@ if use_rgb:
 classes = sorted({i["phrase"] for i in items})
 signers = sorted({i["signer"] for i in items})
 print(f"{len(items)} samples | {len(classes)} phrases | {len(signers)} signers")
-nt, nv = a.test_signers, a.val_signers
-if len(signers) < nt + nv + 2:
-    nt, nv = 1, 1
-    assert len(signers) >= 4, "Need at least 4 different signers for a signer-independent split."
-rng = np.random.RandomState(a.seed); rng.shuffle(signers)
-test_s, val_s, train_s = set(signers[:nt]), set(signers[nt:nt + nv]), set(signers[nt + nv:])
-print("train signers:", sorted(train_s), "| val:", sorted(val_s), "| test:", sorted(test_s))
-pick = lambda S: [i for i in items if i["signer"] in S]
+rng = np.random.RandomState(a.seed)
+if len(signers) == 1:
+    # With one signer, reserve examples from every phrase instead of requiring
+    # other people. This keeps validation/test meaningful without leaking a
+    # phrase entirely out of either split.
+    by_phrase = {phrase: [i for i in items if i["phrase"] == phrase] for phrase in classes}
+    too_few = [phrase for phrase, examples in by_phrase.items() if len(examples) < 3]
+    assert not too_few, "Single-signer training needs at least 3 samples per phrase: " + ", ".join(too_few)
+    train_items, val_items, test_items = [], [], []
+    for examples in by_phrase.values():
+        rng.shuffle(examples)
+        test_items.append(examples[0])
+        val_items.append(examples[1])
+        train_items.extend(examples[2:])
+    train_s, val_s, test_s = train_items, val_items, test_items
+    split_name = "single-signer sample split"
+    print("using one-signer mode: held-out samples per phrase for validation and test")
+else:
+    nt, nv = a.test_signers, a.val_signers
+    assert len(signers) >= nt + nv + 1, (
+        f"Need at least {nt + nv + 1} signers for the requested signer split; "
+        "use one signer with at least 3 samples per phrase."
+    )
+    rng.shuffle(signers)
+    test_s, val_s, train_s = set(signers[:nt]), set(signers[nt:nt + nv]), set(signers[nt + nv:])
+    train_items = [i for i in items if i["signer"] in train_s]
+    val_items = [i for i in items if i["signer"] in val_s]
+    test_items = [i for i in items if i["signer"] in test_s]
+    split_name = "signer-independent split"
+    print("train signers:", sorted(train_s), "| val:", sorted(val_s), "| test:", sorted(test_s))
+print("split:", split_name)
 
 
 class DS(Dataset):
@@ -55,8 +78,8 @@ class DS(Dataset):
                 classes.index(d["phrase"]))
 
 
-mk = lambda S, tr: DataLoader(DS(pick(S), tr), batch_size=32, shuffle=tr, drop_last=False)
-dl_tr, dl_val, dl_te = mk(train_s, True), mk(val_s, False), mk(test_s, False)
+mk = lambda its, tr: DataLoader(DS(its, tr), batch_size=32, shuffle=tr, drop_last=False)
+dl_tr, dl_val, dl_te = mk(train_items, True), mk(val_items, False), mk(test_items, False)
 model = SignNet(len(classes), use_rgb=use_rgb).to(dev)
 opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-2)
 sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, a.epochs)
@@ -87,17 +110,19 @@ for ep in range(a.epochs):
     else:
         bad += 1
     if ep % 5 == 0:
-        print(f"epoch {ep:3d} | train acc {tr:.3f} | val acc (unseen signers) {va:.3f}")
+        print(f"epoch {ep:3d} | train acc {tr:.3f} | val acc ({split_name}) {va:.3f}")
     if bad >= a.patience:
         print("early stop"); break
 
 model.load_state_dict(best_state)
 te, P, Y = run(dl_te)
-print(f"\nBEST val acc {best:.3f} | TEST acc on unseen signers: {te:.3f}")
+print(f"\nBEST val acc {best:.3f} | TEST acc ({split_name}): {te:.3f}")
 os.makedirs("models", exist_ok=True)
 torch.save(dict(state=best_state, classes=classes, use_rgb=use_rgb, hid=model.hid), C.MODEL_PATH)
 json.dump(dict(test_acc=te, val_acc=best, classes=classes, modality=a.modality,
-               test_signers=sorted(test_s)), open("models/metrics.json", "w"), indent=2)
+               split=split_name,
+               test_signers=sorted(test_s) if isinstance(test_s, set) else []),
+          open("models/metrics.json", "w"), indent=2)
 try:
     from sklearn.metrics import classification_report, ConfusionMatrixDisplay
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt

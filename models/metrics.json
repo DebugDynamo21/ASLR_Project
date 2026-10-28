@@ -1,0 +1,28 @@
+{
+  "test_acc": 0.8421052631578947,
+  "val_acc": 0.8947368421052632,
+  "classes": [
+    "eat",
+    "friend",
+    "good_morning",
+    "goodbye",
+    "hello",
+    "help",
+    "how_are_you",
+    "i_love_you",
+    "my_name",
+    "no",
+    "please",
+    "sorry",
+    "stop",
+    "thank_you",
+    "want",
+    "water",
+    "what",
+    "where",
+    "yes"
+  ],
+  "modality": "skeleton",
+  "split": "single-signer sample split",
+  "test_signers": []
+}

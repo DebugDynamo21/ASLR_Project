@@ -60,7 +60,7 @@ class SignProcessor(VideoProcessorBase):
         return av.VideoFrame.from_ndarray(vis, format="bgr24")
 
 
-st.title("🤟 Signer-Independent Sign Phrase Recognition")
+st.title("🤟 Real-Time Sign Phrase Recognition")
 st.caption("Skeletal keyframes (MediaPipe) + RGB keyframes (MobileNetV3) → two-stream BiGRU")
 
 if not os.path.exists(C.MODEL_PATH):
@@ -76,7 +76,9 @@ with st.sidebar:
     st.markdown(f"**Modalities:** {'skeleton + RGB' if pred.use_rgb else 'skeleton only'}")
     if os.path.exists("models/metrics.json"):
         m = json.load(open("models/metrics.json"))
-        st.metric("Accuracy on unseen signers", f"{m['test_acc']*100:.1f}%")
+        metric_label = "Accuracy on held-out samples" if m.get("split") == "single-signer sample split" \
+            else "Accuracy on unseen signers"
+        st.metric(metric_label, f"{m['test_acc']*100:.1f}%")
     with st.expander(f"Supported phrases ({len(pred.classes)})"):
         st.write(", ".join(c.replace("_", " ") for c in pred.classes))
 

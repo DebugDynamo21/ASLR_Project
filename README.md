@@ -27,12 +27,17 @@ Tips: vary background, lighting, distance, clothing; include a left-handed signe
 ```
 python extract_features.py          # add --no-rgb for skeleton only
 ```
-## 4. Train (signer-independent split)
+## 4. Train
 ```
-python train.py                      # skeleton + RGB
+python train.py                      # skeleton + RGB; one signer is supported
 python train.py --modality skeleton  # compare: often equally good and more robust
 ```
-Prints accuracy on **unseen signers**, saves `models/sign_model.pt`, `models/metrics.json`, `models/confusion_matrix.png`.
+With four or more signers, training uses a signer-independent split and prints
+accuracy on **unseen signers**. With only one signer, it automatically holds out
+one sample per phrase for validation and one for testing, so you can run the
+complete real-time pipeline before collecting other signers. Keep at least three
+recordings of every phrase. It saves `models/sign_model.pt`,
+`models/metrics.json`, and `models/confusion_matrix.png`.
 Use whichever modality gives the better *unseen-signer* accuracy.
 
 ## 5. Run the UI
