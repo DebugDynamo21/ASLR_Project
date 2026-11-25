@@ -2,7 +2,7 @@
 
 # Standard-library modules handle command-line options, file discovery, JSON output,
 # and creation of the directory that stores the trained model.
-import argparse, glob, json, os
+import argparse, glob, json, os, tempfile
 
 # NumPy prepares feature arrays and random operations; PyTorch trains the network.
 import numpy as np, torch, torch.nn as nn
@@ -197,10 +197,20 @@ print(f"\nBEST val acc {best:.3f} | TEST acc ({split_name}): {te:.3f}")
 # Create the output directory and save weights plus metadata needed by the app.
 os.makedirs("models", exist_ok=True)
 torch.save(dict(state=best_state, classes=classes, use_rgb=use_rgb, hid=model.hid), C.MODEL_PATH)
-json.dump(dict(test_acc=te, val_acc=best, classes=classes, modality=a.modality,
+metrics = dict(test_acc=te, val_acc=best, classes=classes, modality=a.modality,
                split=split_name,
-               test_signers=sorted(test_s) if isinstance(test_s, set) else []),
-          open("models/metrics.json", "w"), indent=2)
+               test_signers=sorted(test_s) if isinstance(test_s, set) else [])
+metrics_path = os.path.join("models", "metrics.json")
+fd, metrics_tmp = tempfile.mkstemp(dir="models", prefix=".metrics-", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as metrics_file:
+        json.dump(metrics, metrics_file, indent=2)
+        metrics_file.flush()
+        os.fsync(metrics_file.fileno())
+    os.replace(metrics_tmp, metrics_path)
+finally:
+    if os.path.exists(metrics_tmp):
+        os.unlink(metrics_tmp)
 
 # Optionally produce a human-readable report and confusion matrix when scikit-learn
 # and matplotlib are installed. Training results remain available if reporting fails.

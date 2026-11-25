@@ -113,9 +113,19 @@ with st.sidebar:
     mode = st.radio("Mode", ["Live webcam", "Upload video"])
     st.markdown(f"**Modalities:** {'skeleton + RGB' if pred.use_rgb else 'skeleton only'}")
     if os.path.exists("models/metrics.json"):
-        m = json.load(open("models/metrics.json"))
-        st.metric("Test accuracy (unseen signers)" if m.get("split") == "signer"
-                  else "Test accuracy (same signer, not signer-independent)", f"{m['test_acc']*100:.1f}%")
+        try:
+            with open("models/metrics.json") as metrics_file:
+                m = json.load(metrics_file)
+        except (OSError, json.JSONDecodeError) as e:
+            st.warning(f"Training metrics are unavailable: {e}")
+        else:
+            if not isinstance(m, dict) or not isinstance(m.get("test_acc"), (int, float)):
+                st.warning("Training metrics are unavailable: metrics.json has no numeric test_acc.")
+            else:
+                independent = m.get("split") in {"signer", "signer-independent split"}
+                st.metric("Test accuracy (unseen signers)" if independent
+                          else "Test accuracy (same signer, not signer-independent)",
+                          f"{m['test_acc']*100:.1f}%")
     with st.expander(f"Supported phrases ({len(pred.classes)})"):
         st.write(", ".join(nice(c) for c in pred.classes))
 
